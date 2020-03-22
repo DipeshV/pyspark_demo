@@ -6,33 +6,37 @@ from pypchutils.generic import create_logger
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import types as T, functions as F
 
+from pyspark_demo.commons.rate_processor import RateProcessor
+
 logger = create_logger(__name__, level="info")
 
 
-def gen_test_data(spark: SparkSession = None) -> DataFrame:
+def gen_test_data(spark: SparkSession, verbose: int = 1) -> DataFrame:
     """
     """
-    if spark is None:
-        logger.info("Spark session is None, thus creating a new one...")
-        spark = SparkSession.builder.master("local").appName("gen-test-data").getOrCreate()
     # Create a Spark data frame
     schema = T.StructType(
         [
             T.StructField("date", T.StringType(), True),
-            T.StructField("business_id", T.IntegerType(), True),
-            T.StructField("business_name", T.StringType(), True),
-            T.StructField("total_receipts", T.IntegerType(), True),
-            T.StructField("total_receipt_amount", T.FloatType(), True),
+            T.StructField("user_id", T.IntegerType(), True),
+            T.StructField("user_name", T.StringType(), True),
+            T.StructField("total_orders", T.IntegerType(), True),
+            T.StructField("total_amount", T.FloatType(), True),
         ]
     )
     data = [
-        ("2019-12-01", 1, "AA", 111, 111.11),
-        ("2019-12-01", 2, "BB", 222, 222.22),
-        ("2019-12-04", 1, "AA", 444, 444.44),
-        ("2019-12-01", 3, "C'C", 333, 333.33),
+        ("2020-01-01", 1, "AA", 111, 111.11),
+        ("2020-01-01", 2, "BB", 222, 222.22),
+        ("2020-04-04", 1, "AA", 444, 444.44),
+        ("2020-04-01", 3, "CC", 333, 333.33),
     ]
     data = spark.createDataFrame(data, schema=schema)
-    # assert data.isLocal(), "Data should have been created with a local Spark session"
+
+    proc = RateProcessor()
+    proc_udf = F.udf(proc.run, T.FloatType())  # Convert a normal Python into a Spark UDF
+    data = data.withColumn("rate", proc_udf("total_orders", "total_amount"))
+    logger.info("Successfully added 'rate' column")
+
     data = data.withColumn("updated_at", F.current_timestamp().cast("string"))  # Added updated_at column
-    logger.info("Successfully created the test data in Spark")
+    logger.info("Successfully created the test data in Spark\n%s\n" % (data.toPandas().to_string(line_width=120)))
     return data

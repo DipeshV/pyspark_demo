@@ -11,4 +11,3 @@ logger = create_logger(__name__, level="info")
 
 def write_into_hive(data: DataFrame):
     pass
-
