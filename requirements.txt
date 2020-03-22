@@ -1,0 +1,9 @@
+black
+databricks-connect==6.3.0
+pandas
+pyarrow
+pytest
+pytest-cov
+pytest-spark
+
+git+https://github.com/punchh/pypchutils
